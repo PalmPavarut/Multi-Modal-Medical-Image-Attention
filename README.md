@@ -16,7 +16,7 @@ In this work, we propose a **Transformer-based multi-modal attention framework**
 
 ## Model Architecture
 
-![Model Overview](docs/segmentation_proposal.png)
+![Model Overview](docs/proposal.png)
 
 The framework consists of:
 - Modality-specific feature encoding
