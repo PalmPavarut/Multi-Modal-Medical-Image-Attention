@@ -56,13 +56,29 @@ To use this code:
   - `val.csv`
   - `test.csv`
 
-Each CSV file should include:
-- Sample identifiers
-- Paths to modality images
+### CSV Format
 
-Ensure that:
-- Modalities are properly aligned per sample
-- Missing modalities are consistently represented (e.g., empty or null entries)
+The dataset must be defined using CSV files (`train.csv`, `val.csv`, `test.csv`) with the following structure.
+
+**Important:**  
+Segmentation maps must be included in the same CSV and are identified by appending the letter **`L`** to the corresponding modality name.
+
+| Column        | Description                                      |
+|--------------|--------------------------------------------------|
+| Unnamed: 0   | Row index (optional, can be ignored)             |
+| ID           | Patient or case identifier                       |
+| Modality     | Imaging modality name                            |
+| Data         | Image file name                                  |
+| Data path    | Full or relative path to the image file          |
+
+### Example
+
+```csv
+Unnamed: 0,ID,Modality,Data,Data path
+0,15630104,am,1.png,dataset/resized_dataset_divisible/15630104/am/1.png
+1,15630104,am,2.png,dataset/resized_dataset_divisible/15630104/am/2.png
+2,15630104,amL,1.png,dataset/resized_map_divisible/15630104/amL/1.png
+3,15630104,amL,2.png,dataset/resized_map_divisible/15630104/amL/2.png
 
 ---
 
