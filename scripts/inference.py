@@ -15,7 +15,7 @@ from src.engine.inference import InferenceEngine
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--modality', type=str, default='tm')
+    parser.add_argument('--modality', type=str, required=True)
     parser.add_argument('--csv', type=str, required=True)
     parser.add_argument('--checkpoint', type=str, required=True)
     parser.add_argument('--output_dir', type=str, default='./outputs/preds')

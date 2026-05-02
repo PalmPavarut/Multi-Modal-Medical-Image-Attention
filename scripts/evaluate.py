@@ -18,7 +18,7 @@ from src.utils.losses import FocalTverskyLoss
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--modality', type=str, default='tm')
+    parser.add_argument('--modality', type=str, required=True)
     parser.add_argument('--csv', type=str, required=True)
     parser.add_argument('--checkpoint', type=str, required=True)
     return parser.parse_args()

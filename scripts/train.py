@@ -14,7 +14,7 @@ from src.engine.trainer import Trainer
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--modality', type=str, default='tm')
+    parser.add_argument('--modality', type=str, required=True)
     parser.add_argument('--csv_train', type=str, required=True)
     parser.add_argument('--csv_val', type=str, required=True)
     parser.add_argument('--save_dir', type=str, default='./outputs')
