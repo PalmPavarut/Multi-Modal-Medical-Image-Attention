@@ -46,6 +46,16 @@ The model:
 
 ---
 
+## Installation
+
+This project requires **GPU acceleration** with CUDA-enabled :contentReference[oaicite:0]{index=0}.
+
+- Ensure PyTorch is installed with GPU (CUDA) support in your environment  
+- Then install the remaining dependencies:
+
+```bash
+pip install -r requirements.txt
+
 ## Dataset
 The dataset used in our paper is **not publicly available** due to privacy restrictions.
 
