@@ -25,7 +25,7 @@ class Trainer:
         self.criterion = FocalTverskyLoss(alpha=0.5, beta=0.5)
 
         # ✅ Metrics
-        self.metric = ClassificationMetrics(from_logits=True)
+        self.metric = ClassificationMetrics(from_logits=False)
 
         self.epochs = 300
         self.writer = SummaryWriter(os.path.join(save_dir, "logs"))
