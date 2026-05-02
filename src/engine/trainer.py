@@ -6,8 +6,10 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 from src.utils.early_stopping import EarlyStopping
-from src.utils.metrics import DiceScore
+from src.utils.metrics import ClassificationMetrics
 from src.utils.losses import FocalTverskyLoss
+
+from tqdm import tqdm
 
 
 class Trainer:
@@ -19,8 +21,11 @@ class Trainer:
 
         self.device_model, self.optimizer = self._setup_model()
 
-        self.criterion = FocalTverskyLoss(ALPHA=0.5, BETA=0.5)
-        self.metric = DiceScore()
+        # ✅ Loss
+        self.criterion = FocalTverskyLoss(alpha=0.5, beta=0.5)
+
+        # ✅ Metrics
+        self.metric = ClassificationMetrics(from_logits=True)
 
         self.epochs = 300
         self.writer = SummaryWriter(os.path.join(save_dir, "logs"))
@@ -49,15 +54,21 @@ class Trainer:
         for epoch in range(self.epochs):
             self._set_seed(epoch)
 
-            train_loss, train_dice = self._train_one_epoch(epoch)
-            val_loss, val_dice = self._validate(epoch)
+            train_loss, train_metrics = self._train_one_epoch(epoch)
+            val_loss, val_metrics = self._validate(epoch)
 
+            # ✅ Logging (TensorBoard)
             self.writer.add_scalar("Loss/Train", train_loss, epoch)
-            self.writer.add_scalar("Dice/Train", train_dice, epoch)
             self.writer.add_scalar("Loss/Val", val_loss, epoch)
-            self.writer.add_scalar("Dice/Val", val_dice, epoch)
 
-            self.early_stopping(val_dice, self.model, epoch)
+            for k, v in train_metrics.items():
+                self.writer.add_scalar(f"{k}/Train", v, epoch)
+
+            for k, v in val_metrics.items():
+                self.writer.add_scalar(f"{k}/Val", v, epoch)
+
+            # ✅ Early stopping uses Dice
+            self.early_stopping(val_metrics["dice"], self.model, epoch)
 
             if self.early_stopping.early_stop:
                 print(f"Early stopping at epoch {epoch}")
@@ -66,10 +77,17 @@ class Trainer:
     def _train_one_epoch(self, epoch):
         self.model.train()
 
-        total_loss, total_dice = 0, 0
+        total_loss = 0
+        total_metrics = {}
         count = 0
 
-        for images_org, images, targets in self.train_loader:
+        pbar = tqdm(
+            self.train_loader,
+            desc=f"Train Epoch {epoch+1}",
+            disable=not self.accelerator.is_local_main_process
+        )
+
+        for images_org, images, targets in pbar:
             self.optimizer.zero_grad()
 
             outputs = self.model(images)
@@ -85,22 +103,40 @@ class Trainer:
             self.optimizer.step()
 
             with torch.no_grad():
-                dice = self.metric(outputs, targets)
+                metrics = self.metric(outputs, targets)
 
             total_loss += loss.item()
-            total_dice += dice.item()
+
+            for k, v in metrics.items():
+                total_metrics[k] = total_metrics.get(k, 0) + v.item()
+
             count += 1
 
-        return total_loss / count, total_dice / count
+            # ✅ Update progress bar
+            avg_loss = total_loss / count
+            pbar.set_postfix({
+                "loss": f"{avg_loss:.4f}",
+                "dice": f"{metrics.get('dice', 0):.4f}"
+            })
+
+        avg_metrics = {k: v / count for k, v in total_metrics.items()}
+        return total_loss / count, avg_metrics
 
     def _validate(self, epoch):
         self.model.eval()
 
-        total_loss, total_dice = 0, 0
+        total_loss = 0
+        total_metrics = {}
         count = 0
 
+        pbar = tqdm(
+            self.val_loader,
+            desc=f"Val Epoch {epoch+1}",
+            disable=not self.accelerator.is_local_main_process
+        )
+
         with torch.no_grad():
-            for images_org, images, targets in self.val_loader:
+            for images_org, images, targets in pbar:
                 outputs = self.model(images)
                 outputs = torch.nn.functional.interpolate(
                     outputs,
@@ -110,13 +146,24 @@ class Trainer:
                 )
 
                 loss = self.criterion(outputs, targets)
-                dice = self.metric(outputs, targets)
+                metrics = self.metric(outputs, targets)
 
                 total_loss += loss.item()
-                total_dice += dice.item()
+
+                for k, v in metrics.items():
+                    total_metrics[k] = total_metrics.get(k, 0) + v.item()
+
                 count += 1
 
-        return total_loss / count, total_dice / count
+                # ✅ Update progress bar
+                avg_loss = total_loss / count
+                pbar.set_postfix({
+                    "val_loss": f"{avg_loss:.4f}",
+                    "dice": f"{metrics.get('dice', 0):.4f}"
+                })
+
+        avg_metrics = {k: v / count for k, v in total_metrics.items()}
+        return total_loss / count, avg_metrics
 
     def _set_seed(self, epoch):
         seed = 42 + epoch
